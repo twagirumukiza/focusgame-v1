@@ -20,12 +20,13 @@
    Voir README.md pour le détail pas-à-pas.
    ========================================================= */
 
-window.FOCUS_FIREBASE_CONFIG = {
-  apiKey: "REMPLACE_MOI",
-  authDomain: "REMPLACE_MOI.firebaseapp.com",
-  databaseURL: "https://REMPLACE_MOI-default-rtdb.firebaseio.com",
-  projectId: "REMPLACE_MOI",
-  storageBucket: "REMPLACE_MOI.appspot.com",
-  messagingSenderId: "REMPLACE_MOI",
-  appId: "REMPLACE_MOI"
+const firebaseConfig = {
+  apiKey: "AIzaSyCZwPWMmN1I5hdVYQEkj_PtUCaHYJTdptQ",
+  authDomain: "yellowdotchampiona.firebaseapp.com",
+  databaseURL: "https://yellowdotchampiona-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "yellowdotchampiona",
+  storageBucket: "yellowdotchampiona.firebasestorage.app",
+  messagingSenderId: "149651594411",
+  appId: "1:149651594411:web:09a21c1484ac3cb767ebee",
+  measurementId: "G-CM4BWNR1SY"
 };
