@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>FOCUS — v4</title>
+<meta name="theme-color" content="#0b0b0f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0b0f;
+    --panel:#131318;
+    --line:#2a2d35;
+    --dot:#eef0f2;
+    --dot-dim:#4a4d55;
+    --muted:#7d8189;
+    --yellow:#ffcc33;
+    --yellow-dim:#4a3f1a;
+    --win:#4ade80;
+    --lose:#f87171;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--dot);
+    font-family:'JetBrains Mono',monospace; overflow:hidden;}
+  #app{position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center;}
+
+  .screen{position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px; text-align:center; overflow-y:auto;}
+  .screen.active{display:flex;}
+
+  .eyebrow{letter-spacing:.35em; font-size:11px; color:var(--muted); text-transform:uppercase; margin-bottom:10px;}
+  h1{font-size:clamp(40px,9vw,64px); font-weight:800; margin:0 0 6px; letter-spacing:.02em;}
+  h1 .dot{color:var(--yellow);}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:36px; max-width:360px; line-height:1.6;}
+
+  .btn{
+    font-family:inherit; font-size:14px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    background:transparent; color:var(--dot); border:1px solid var(--line); border-radius:2px;
+    padding:14px 28px; cursor:pointer; transition:all .15s ease; min-width:220px;
+  }
+  .btn:hover{border-color:var(--dot); background:var(--panel);}
+  .btn:active{transform:scale(.98);}
+  .btn.primary{border-color:var(--yellow); color:var(--yellow);}
+  .btn.primary:hover{background:var(--yellow-dim);}
+  .btn.ghost{border-color:transparent; color:var(--muted);}
+  .btn.ghost:hover{color:var(--dot); border-color:var(--line);}
+  .btn.danger{border-color:var(--lose); color:var(--lose);}
+  .btn.big{min-width:280px; padding:20px 36px; font-size:16px;}
+  .btn:disabled{opacity:.35; cursor:not-allowed;}
+  .btn:disabled:hover{background:transparent; border-color:var(--line);}
+
+  .menu-stack{display:flex; flex-direction:column; gap:12px; align-items:center;}
+
+  /* ---- Config screen ---- */
+  .config-box{width:100%; max-width:380px;}
+  .field{margin-bottom:22px; text-align:left;}
+  .field-label{font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; display:block;}
+  .opts{display:flex; flex-wrap:wrap; gap:8px;}
+  .opt{
+    font-family:inherit; font-size:12px; font-weight:700; letter-spacing:.05em;
+    background:var(--panel); color:var(--muted); border:1px solid var(--line); border-radius:2px;
+    padding:9px 14px; cursor:pointer; transition:all .12s ease;
+  }
+  .opt:hover{color:var(--dot);}
+  .opt.selected{border-color:var(--yellow); color:var(--yellow); background:var(--yellow-dim);}
+
+  .text-input{
+    width:100%; font-family:inherit; font-size:14px; font-weight:700; letter-spacing:.05em;
+    background:var(--panel); color:var(--dot); border:1px solid var(--line); border-radius:2px;
+    padding:12px 14px; outline:none; transition:border-color .12s ease; text-align:center;
+    text-transform:uppercase;
+  }
+  .text-input:focus{border-color:var(--yellow);}
+  .text-input::placeholder{color:var(--dot-dim); text-transform:none;}
+
+  /* ---- Game screen ---- */
+  #gameScreen{justify-content:flex-start; padding-top:18px;}
+  .hud{width:100%; max-width:560px; display:flex; justify-content:space-between; align-items:center;
+    padding:0 6px; margin-bottom:8px; font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted);}
+  .hud b{color:var(--dot); font-size:13px;}
+  .status-line{height:20px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;}
+  .status-line.watch{color:var(--yellow);}
+  .status-line.go{color:var(--win);}
+  .status-line.bad{color:var(--lose);}
+  #stage{border-radius:8px; touch-action:none; max-width:100%; height:auto;}
+  .stop-wrap{height:76px; display:flex; align-items:center; justify-content:center;}
+  #stopBtn{
+    width:220px; height:56px; border-radius:4px; border:2px solid var(--dot); background:transparent;
+    color:var(--dot); font-family:inherit; font-weight:800; font-size:16px; letter-spacing:.2em;
+    cursor:pointer; opacity:0; pointer-events:none; transition:opacity .2s ease, transform .1s ease;
+  }
+  #stopBtn.visible{opacity:1; pointer-events:auto;}
+  #stopBtn:active{transform:scale(.96);}
+  #stopBtn.pulsing{animation:pulse 1.1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{border-color:var(--dot);} 50%{border-color:var(--yellow); color:var(--yellow);}}
+
+  .top-links{position:absolute; top:18px; right:18px; display:flex; gap:14px;}
+  .top-links button{background:none; border:none; color:var(--muted); font-family:inherit; font-size:11px;
+    letter-spacing:.15em; text-transform:uppercase; cursor:pointer;}
+  .top-links button:hover{color:var(--dot);}
+
+  /* ---- Result screen ---- */
+  .result-word{font-size:clamp(36px,8vw,56px); font-weight:800; letter-spacing:.05em; margin-bottom:8px;}
+  .result-word.win{color:var(--win);}
+  .result-word.lose{color:var(--lose);}
+  .stats-row{display:flex; gap:28px; margin:22px 0 32px; flex-wrap:wrap; justify-content:center;}
+  .stat{display:flex; flex-direction:column; align-items:center;}
+  .stat b{font-size:22px;}
+  .stat span{font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-top:4px;}
+
+  .rules-box{max-width:420px; text-align:left; color:var(--muted); font-size:13px; line-height:1.8;}
+  .rules-box b{color:var(--dot);}
+  .rules-box ol{padding-left:20px; margin:16px 0;}
+  .rules-box h3{color:var(--dot); font-size:13px; letter-spacing:.1em; text-transform:uppercase; margin:24px 0 4px;}
+
+  /* ---- Settings screen ---- */
+  .settings-box{width:100%; max-width:380px;}
+  .toggle-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 4px; border-bottom:1px solid var(--line); text-align:left;
+  }
+  .toggle-row .t-label{font-size:13px; letter-spacing:.03em;}
+  .toggle-row .t-hint{font-size:10px; color:var(--muted); letter-spacing:.05em; margin-top:3px;}
+  .switch{
+    position:relative; width:46px; height:26px; border-radius:14px; border:1px solid var(--line);
+    background:var(--panel); cursor:pointer; flex-shrink:0; transition:all .15s ease;
+  }
+  .switch::after{
+    content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%;
+    background:var(--dot-dim); transition:all .18s ease;
+  }
+  .switch.on{border-color:var(--yellow); background:var(--yellow-dim);}
+  .switch.on::after{left:22px; background:var(--yellow);}
+
+  .icon-btn{
+    background:none; border:1px solid var(--line); color:var(--muted); border-radius:4px;
+    width:36px; height:36px; font-size:15px; cursor:pointer; transition:all .12s ease;
+  }
+  .icon-btn:hover{color:var(--dot); border-color:var(--dot);}
+
+  /* ---- Multiplayer ---- */
+  .room-code-display{
+    font-size:clamp(34px,9vw,48px); font-weight:800; letter-spacing:.25em; color:var(--yellow);
+    border:1px dashed var(--line); border-radius:6px; padding:16px 20px; margin-bottom:18px;
+  }
+  .copy-row{display:flex; gap:10px; justify-content:center; margin-bottom:28px; flex-wrap:wrap;}
+  .player-list{width:100%; max-width:380px; margin-bottom:26px; text-align:left;}
+  .player-row{
+    display:flex; align-items:center; justify-content:space-between; padding:12px 14px;
+    border:1px solid var(--line); border-radius:4px; margin-bottom:8px; font-size:13px;
+  }
+  .player-row.me{border-color:var(--yellow);}
+  .player-row .tag{font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted);}
+  .player-row.eliminated{opacity:.4; text-decoration:line-through;}
+  .player-row .rank{color:var(--yellow); font-weight:800; margin-right:10px;}
+  .mp-banner{
+    position:absolute; top:70px; left:50%; transform:translateX(-50%); z-index:5;
+    background:var(--panel); border:1px solid var(--yellow); color:var(--yellow); border-radius:4px;
+    padding:10px 22px; font-size:12px; letter-spacing:.15em; text-transform:uppercase;
+    opacity:0; pointer-events:none; transition:opacity .25s ease;
+  }
+  .mp-banner.show{opacity:1;}
+  .mp-hud{display:none; width:100%; max-width:560px; justify-content:center; gap:26px;
+    font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); margin-bottom:2px;}
+  .mp-hud b{color:var(--yellow); font-size:13px;}
+  .mp-hud.active{display:flex;}
+
+  .signature{
+    position:fixed; bottom:10px; right:14px; font-size:10px; letter-spacing:.1em;
+    color:var(--muted); opacity:.55; pointer-events:none; z-index:50;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    #stopBtn.pulsing{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== MENU ===================== -->
+  <section class="screen active" id="menuScreen">
+    <div class="eyebrow">Suivi visuel · Mémoire · Concentration</div>
+    <h1>FOCUS<span class="dot">.</span></h1>
+    <div class="sub">Repère le point. Suis le mouvement. Ne le perds pas de vue.</div>
+    <div class="menu-stack">
+      <button class="btn primary" onclick="goTo('configScreen')">▶ Jouer Solo</button>
+      <button class="btn" onclick="goTo('mpMenuScreen')">🌍 Jouer en ligne</button>
+      <button class="btn ghost" onclick="goTo('settingsScreen')">⚙ Paramètres</button>
+      <button class="btn ghost" onclick="goTo('rulesScreen')">❓ Règles</button>
+    </div>
+  </section>
+
+  <!-- ===================== PARAMETRES ===================== -->
+  <section class="screen" id="settingsScreen">
+    <button class="btn ghost" style="position:absolute;top:18px;left:18px;min-width:auto;" onclick="goTo('menuScreen')">← Retour</button>
+    <div class="eyebrow">Réglages</div>
+    <h1 style="font-size:28px;margin-bottom:24px;">Paramètres</h1>
+    <div class="settings-box">
+      <div class="toggle-row">
+        <div><div class="t-label">🎵 Musique</div><div class="t-hint">Ambiance sonore continue</div></div>
+        <div class="switch" id="swMusic" onclick="toggleSetting('music')"></div>
+      </div>
+      <div class="toggle-row">
+        <div><div class="t-label">🔊 Effets sonores</div><div class="t-hint">Signal, arrêt, victoire, défaite</div></div>
+        <div class="switch" id="swSfx" onclick="toggleSetting('sfx')"></div>
+      </div>
+      <div class="toggle-row">
+        <div><div class="t-label">📳 Vibration</div><div class="t-hint">Retour haptique (mobile)</div></div>
+        <div class="switch" id="swVibration" onclick="toggleSetting('vibration')"></div>
+      </div>
+      <div class="toggle-row" style="border-bottom:none;">
+        <div><div class="t-label">⛶ Plein écran</div><div class="t-hint">Immersion sans barre de navigateur</div></div>
+        <div class="switch" id="swFullscreen" onclick="toggleFullscreen()"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CONFIG SOLO ===================== -->
+  <section class="screen" id="configScreen">
+    <button class="btn ghost" style="position:absolute;top:18px;left:18px;min-width:auto;" onclick="goTo('menuScreen')">← Retour</button>
+    <div class="eyebrow">Configuration</div>
+    <h1 style="font-size:28px;margin-bottom:28px;">Mode Solo</h1>
+    <div class="config-box">
+      <div class="field">
+        <span class="field-label">Nombre de points</span>
+        <div class="opts" id="optCount"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Vitesse</span>
+        <div class="opts" id="optSpeed"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Temps avant disparition du jaune</span>
+        <div class="opts" id="optTime"></div>
+      </div>
+      <button class="btn primary big" onclick="startRound()">Commencer</button>
+    </div>
+  </section>
+
+  <!-- ===================== JEU (solo + multi) ===================== -->
+  <section class="screen" id="gameScreen">
+    <div class="top-links">
+      <button onclick="goTo('settingsScreen')">⚙ Réglages</button>
+      <button onclick="confirmQuit()">🚪 Quitter</button>
+    </div>
+    <div class="mp-banner" id="mpBanner"></div>
+    <div class="hud" id="soloHud">
+      <div>Points <b id="hudCount">–</b></div>
+      <div>Manche <b id="hudRound">1</b></div>
+      <div>Précision <b id="hudAccuracy">–</b></div>
+    </div>
+    <div class="mp-hud" id="mpHud">
+      <div>Manche <b id="mpHudRound">1</b></div>
+      <div>Joueurs restants <b id="mpHudAlive">–</b></div>
+      <div>Points <b id="mpHudCount">–</b></div>
+    </div>
+    <div class="status-line" id="statusLine">Préparation…</div>
+    <canvas id="stage" width="560" height="560"></canvas>
+    <div class="stop-wrap">
+      <button id="stopBtn" onclick="onStop()">STOP</button>
+    </div>
+  </section>
+
+  <!-- ===================== RESULTAT (solo) ===================== -->
+  <section class="screen" id="resultScreen">
+    <div class="result-word" id="resultWord">—</div>
+    <div class="sub" id="resultSub" style="margin-bottom:0;"></div>
+    <div class="stats-row">
+      <div class="stat"><b id="statPlayed">0</b><span>Parties</span></div>
+      <div class="stat"><b id="statWins">0</b><span>Victoires</span></div>
+      <div class="stat"><b id="statAcc">0%</b><span>Précision</span></div>
+      <div class="stat"><b id="statBest">0</b><span>Meilleure série</span></div>
+    </div>
+    <div class="menu-stack">
+      <button class="btn primary" onclick="startRound()">🔄 Rejouer</button>
+      <button class="btn ghost" onclick="goTo('configScreen')">⚙ Changer les réglages</button>
+      <button class="btn ghost" onclick="goTo('menuScreen')">🏠 Menu</button>
+    </div>
+  </section>
+
+  <!-- ===================== REGLES ===================== -->
+  <section class="screen" id="rulesScreen">
+    <button class="btn ghost" style="position:absolute;top:18px;left:18px;min-width:auto;" onclick="goTo('menuScreen')">← Retour</button>
+    <div class="eyebrow">Comment jouer</div>
+    <h1 style="font-size:28px;margin-bottom:6px;">Règles</h1>
+    <div class="rules-box">
+      <ol>
+        <li>Un point devient <b>jaune</b> parmi tous les autres.</li>
+        <li>Tous les points se mettent à bouger sur le cercle.</li>
+        <li>Après quelques secondes, le jaune redevient blanc — il se fond dans la masse.</li>
+        <li>Les points continuent de bouger. Reste concentré, garde-le à l'œil.</li>
+        <li>Appuie sur <b>STOP</b> quand tu es prêt : tout se fige.</li>
+        <li>Clique sur le point que tu penses être le bon.</li>
+        <li>Le vrai point s'illumine en jaune : victoire ou défaite.</li>
+      </ol>
+      <h3>Mode multijoueur — élimination</h3>
+      <ol>
+        <li>L'hôte choisit le <b>nombre de points de départ</b>, la <b>vitesse de départ</b> et le <b>temps</b> à partir duquel on peut appuyer sur STOP, puis invite les autres joueurs.</li>
+        <li>Tous les joueurs jouent la même manche en même temps.</li>
+        <li>Tout joueur qui désigne le mauvais point est <b>éliminé</b>. La partie continue pour les autres.</li>
+        <li>À chaque nouvelle manche, le nombre de points et la vitesse <b>augmentent progressivement</b>.</li>
+        <li>La partie se termine lorsqu'il ne reste <b>qu'un seul joueur</b> : le vainqueur.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===================== MULTIJOUEUR — MENU ===================== -->
+  <section class="screen" id="mpMenuScreen">
+    <button class="btn ghost" style="position:absolute;top:18px;left:18px;min-width:auto;" onclick="goTo('menuScreen')">← Retour</button>
+    <div class="eyebrow">Multijoueur</div>
+    <h1 style="font-size:28px;margin-bottom:28px;">Jouer en ligne</h1>
+    <div class="menu-stack">
+      <button class="btn primary" onclick="goTo('mpCreateScreen')">➕ Créer une partie</button>
+      <button class="btn" onclick="openJoinScreen()">🔑 Rejoindre une partie</button>
+    </div>
+  </section>
+
+  <!-- ===================== MULTIJOUEUR — CREATION ===================== -->
+  <section class="screen" id="mpCreateScreen">
+    <button class="btn ghost" style="position:absolute;top:18px;left:18px;min-width:auto;" onclick="goTo('mpMenuScreen')">← Retour</button>
+    <div class="eyebrow">Configuration</div>
+    <h1 style="font-size:24px;margin-bottom:24px;">Créer une partie</h1>
+    <div class="config-box">
+      <div class="field">
+        <span class="field-label">Ton pseudo</span>
+        <input class="text-input" id="mpCreateName" maxlength="16" placeholder="Ton pseudo">
+      </div>
+      <div class="field">
+        <span class="field-label">Nombre de points de départ</span>
+        <div class="opts" id="mpOptCount"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Vitesse de départ</span>
+        <div class="opts" id="mpOptSpeed"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">Temps avant de pouvoir appuyer</span>
+        <div class="opts" id="mpOptTime"></div>
+      </div>
+      <button class="btn primary big" onclick="mpCreateRoom()">Créer la partie</button>
+    </div>
+  </section>
+
+  <!-- ===================== MULTIJOUEUR — REJOINDRE ===================== -->
+  <section class="screen" id="mpJoinScreen">
+    <button class="btn ghost" style="position:absolute;top:18px;left:18px;min-width:auto;" onclick="goTo('mpMenuScreen')">← Retour</button>
+    <div class="eyebrow">Rejoindre</div>
+    <h1 style="font-size:24px;margin-bottom:24px;">Rejoindre une partie</h1>
+    <div class="config-box">
+      <div class="field">
+        <span class="field-label">Ton pseudo</span>
+        <input class="text-input" id="mpJoinName" maxlength="16" placeholder="Ton pseudo">
+      </div>
+      <div class="field">
+        <span class="field-label">Code de la partie</span>
+        <input class="text-input" id="mpJoinCode" maxlength="5" placeholder="EX: 7K3QP">
+      </div>
+      <button class="btn primary big" onclick="mpJoinRoom()">Rejoindre</button>
+      <div class="sub" id="mpJoinError" style="color:var(--lose); margin-top:16px; display:none;"></div>
+    </div>
+  </section>
+
+  <!-- ===================== MULTIJOUEUR — LOBBY ===================== -->
+  <section class="screen" id="mpLobbyScreen">
+    <button class="btn ghost" style="position:absolute;top:18px;left:18px;min-width:auto;" onclick="mpLeaveRoom()">🚪 Quitter</button>
+    <div class="eyebrow">Salle d'attente</div>
+    <div class="room-code-display" id="mpRoomCodeDisplay">—</div>
+    <div class="copy-row">
+      <button class="btn ghost" onclick="mpCopyLink()">🔗 Copier le lien d'invitation</button>
+      <button class="btn ghost" onclick="mpCopyCode()">📋 Copier le code</button>
+    </div>
+    <div class="player-list" id="mpPlayerList"></div>
+    <div class="menu-stack">
+      <button class="btn primary big" id="mpStartBtn" onclick="mpStartGame()" style="display:none;">▶ Démarrer la partie</button>
+      <div class="sub" id="mpWaitHostMsg" style="display:none;">En attente que l'hôte démarre la partie…</div>
+    </div>
+  </section>
+
+  <!-- ===================== MULTIJOUEUR — ELIMINE ===================== -->
+  <section class="screen" id="mpEliminatedScreen">
+    <div class="eyebrow">Éliminé</div>
+    <h1 style="font-size:32px; color:var(--lose); margin-bottom:10px;">HORS JEU</h1>
+    <div class="sub" id="mpEliminatedMsg"></div>
+    <div class="sub" id="mpEliminatedLive"></div>
+    <div class="menu-stack" style="margin-top:20px;">
+      <button class="btn ghost" onclick="mpLeaveRoom()">🏠 Menu</button>
+    </div>
+  </section>
+
+  <!-- ===================== MULTIJOUEUR — FIN DE PARTIE ===================== -->
+  <section class="screen" id="mpFinalScreen">
+    <div class="result-word" id="mpFinalWord">—</div>
+    <div class="sub" id="mpFinalSub" style="margin-bottom:18px;"></div>
+    <div class="player-list" id="mpFinalRanking"></div>
+    <div class="menu-stack">
+      <button class="btn primary" id="mpReplayBtn" onclick="mpReplaySameRoom()" style="display:none;">🔄 Rejouer (mêmes joueurs)</button>
+      <button class="btn ghost" onclick="mpLeaveRoom()">🏠 Menu</button>
+    </div>
+  </section>
+
+</div>
+
+<div class="signature">by twagirumukiza</div>
+
+<!-- Firebase (multijoueur en temps réel) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+
+<script>
+/* =========================================================
+   FOCUS — v4 (moteur Solo + Multijoueur élimination)
+   ========================================================= */
+
+/* ---------- SECTION: CONFIG / STATE ---------- */
+const COUNT_OPTIONS = [8,12,16,20,24,30];
+const SPEED_OPTIONS = [
+  {label:'Très lente', px:35},
+  {label:'Lente',      px:65},
+  {label:'Normale',    px:105},
+  {label:'Rapide',     px:155},
+  {label:'Extrême',    px:220},
+];
+const TIME_OPTIONS = [1,2,3];
+
+let config = { count:12, speedIdx:2, timeSec:2 };
+let mpConfig = { count:8, speedIdx:1, timeSec:2 };
+
+let stats = { played:0, wins:0, correct:0, attempts:0, currentStreak:0, bestStreak:0 };
+
+const STAGE_SIZE = 560;
+const CENTER = STAGE_SIZE/2;
+const BOUNDARY_R = 250;
+const MAX_COUNT = 30;
+const SPEED_STEP_EVERY_ROUNDS = 2; // la vitesse augmente d'un cran toutes les 2 manches
+const COUNT_STEP_PER_ROUND = 2;    // +2 points par manche
+const MP_ROUND_TIMEOUT_MS = 20000; // délai max pour qu'une manche soit évaluée côté hôte
+
+let points = [];        // {x,y,vx,vy,r}
+let targetIndex = -1;
+let gamePhase = 'idle';  // idle | reveal | moving | waitingStop | stopped | done
+let phaseTimer = 0;
+let rafId = null;
+let lastTs = 0;
+let roundNum = 1;
+let activeMode = 'solo'; // 'solo' | 'mp'
+let mpHasAnswered = false;
+
+/* ---------- SECTION: SETTINGS ---------- */
+let settings = { music:false, sfx:true, vibration:true, fullscreen:false };
+
+function toggleSetting(key){
+  settings[key] = !settings[key];
+  refreshSettingsUI();
+  if(key==='music'){
+    settings.music ? startAmbientMusic() : stopAmbientMusic();
+  }
+  if(key==='sfx' && settings.sfx) playTone(660,0.06,'sine',0.15);
+}
+
+function refreshSettingsUI(){
+  document.getElementById('swMusic').classList.toggle('on', settings.music);
+  document.getElementById('swSfx').classList.toggle('on', settings.sfx);
+  document.getElementById('swVibration').classList.toggle('on', settings.vibration);
+  document.getElementById('swFullscreen').classList.toggle('on', settings.fullscreen);
+}
+refreshSettingsUI();
+
+/* ---------- SECTION: AUDIO ---------- */
+let audioCtx = null;
+let ambientNodes = null;
+
+function ensureAudioCtx(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+document.addEventListener('pointerdown', ()=>{ ensureAudioCtx(); }, {once:true});
+
+function playTone(freq, duration, type='sine', volume=0.2){
+  if(!settings.sfx) return;
+  const ac = ensureAudioCtx();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = volume;
+  gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+  osc.connect(gain).connect(ac.destination);
+  osc.start();
+  osc.stop(ac.currentTime + duration + 0.02);
+}
+
+function playSfxReveal(){ playTone(880, 0.18, 'triangle', 0.18); }
+function playSfxFade(){ playTone(440, 0.15, 'sine', 0.12); }
+function playSfxStop(){ playTone(220, 0.12, 'square', 0.15); }
+function playSfxWin(){ playTone(660,0.12,'sine',0.18); setTimeout(()=>playTone(990,0.2,'sine',0.18),120); }
+function playSfxLose(){ playTone(200,0.28,'sawtooth',0.15); }
+
+function startAmbientMusic(){
+  if(ambientNodes) return;
+  const ac = ensureAudioCtx();
+  const osc1 = ac.createOscillator();
+  const osc2 = ac.createOscillator();
+  const gain = ac.createGain();
+  osc1.type='sine'; osc1.frequency.value=110;
+  osc2.type='sine'; osc2.frequency.value=165;
+  gain.gain.value=0.035;
+  osc1.connect(gain); osc2.connect(gain); gain.connect(ac.destination);
+  osc1.start(); osc2.start();
+  ambientNodes = {osc1,osc2,gain};
+}
+function stopAmbientMusic(){
+  if(!ambientNodes) return;
+  ambientNodes.gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.4);
+  ambientNodes.osc1.stop(audioCtx.currentTime+0.45);
+  ambientNodes.osc2.stop(audioCtx.currentTime+0.45);
+  ambientNodes = null;
+}
+
+/* ---------- SECTION: VIBRATION ---------- */
+function vibrate(pattern){
+  if(settings.vibration && navigator.vibrate) navigator.vibrate(pattern);
+}
+
+/* ---------- SECTION: PLEIN ECRAN ---------- */
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen?.().then(()=>{
+      settings.fullscreen = true; refreshSettingsUI();
+    }).catch(()=>{ settings.fullscreen=false; refreshSettingsUI(); });
+  } else {
+    document.exitFullscreen?.();
+    settings.fullscreen = false; refreshSettingsUI();
+  }
+}
+document.addEventListener('fullscreenchange', ()=>{
+  settings.fullscreen = !!document.fullscreenElement;
+  refreshSettingsUI();
+});
+
+/* ---------- SECTION: DOM REFS ---------- */
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+const statusLine = document.getElementById('statusLine');
+const stopBtn = document.getElementById('stopBtn');
+const mpBanner = document.getElementById('mpBanner');
+
+/* ---------- SECTION: NAVIGATION ---------- */
+function goTo(screenId){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  if(screenId!=='gameScreen') stopLoop();
+  if(screenId==='gameScreen' && settings.music) startAmbientMusic();
+  else stopAmbientMusic();
+}
+
+function confirmQuit(){
+  stopLoop();
+  if(activeMode==='mp'){ mpLeaveRoom(); }
+  else { goTo('menuScreen'); }
+}
+
+/* ---------- SECTION: CONFIG UI (solo) ---------- */
+function buildOptionGroup(containerId, values, formatFn, currentIdx, onSelect, refreshFn){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  values.forEach((v,i)=>{
+    const b = document.createElement('button');
+    b.className = 'opt' + (i===currentIdx ? ' selected':'');
+    b.textContent = formatFn(v);
+    b.onclick = ()=>{ onSelect(i); refreshFn(); };
+    el.appendChild(b);
+  });
+}
+
+function refreshConfigUI(){
+  buildOptionGroup('optCount', COUNT_OPTIONS, v=>v, COUNT_OPTIONS.indexOf(config.count), i=>config.count=COUNT_OPTIONS[i], refreshConfigUI);
+  buildOptionGroup('optSpeed', SPEED_OPTIONS, v=>v.label, config.speedIdx, i=>config.speedIdx=i, refreshConfigUI);
+  buildOptionGroup('optTime', TIME_OPTIONS, v=>v+' s', TIME_OPTIONS.indexOf(config.timeSec), i=>config.timeSec=TIME_OPTIONS[i], refreshConfigUI);
+}
+refreshConfigUI();
+
+function refreshMpConfigUI(){
+  buildOptionGroup('mpOptCount', COUNT_OPTIONS, v=>v, COUNT_OPTIONS.indexOf(mpConfig.count), i=>mpConfig.count=COUNT_OPTIONS[i], refreshMpConfigUI);
+  buildOptionGroup('mpOptSpeed', SPEED_OPTIONS, v=>v.label, mpConfig.speedIdx, i=>mpConfig.speedIdx=i, refreshMpConfigUI);
+  buildOptionGroup('mpOptTime', TIME_OPTIONS, v=>v+' s', TIME_OPTIONS.indexOf(mpConfig.timeSec), i=>mpConfig.timeSec=TIME_OPTIONS[i], refreshMpConfigUI);
+}
+refreshMpConfigUI();
+
+/* ---------- SECTION: ROUND SETUP (moteur commun solo + mp) ---------- */
+function startRound(){
+  activeMode = 'solo';
+  document.getElementById('soloHud').style.display = 'flex';
+  document.getElementById('mpHud').classList.remove('active');
+  goTo('gameScreen');
+  document.getElementById('hudCount').textContent = config.count;
+  document.getElementById('hudRound').textContent = roundNum;
+  updateAccuracyHud();
+
+  bootRound({
+    count: config.count,
+    speedPx: SPEED_OPTIONS[config.speedIdx].px,
+    timeSec: config.timeSec,
+    forcedTarget: null
+  });
+}
+
+function bootRound({count, speedPx, timeSec, forcedTarget}){
+  points = [];
+  const n = count;
+  const speed = speedPx;
+  const ringR = BOUNDARY_R * 0.72;
+  const pr = pointRadiusFor(n);
+
+  for(let i=0;i<n;i++){
+    const angle = (i / n) * Math.PI*2 - Math.PI/2;
+    const x = CENTER + Math.cos(angle)*ringR;
+    const y = CENTER + Math.sin(angle)*ringR;
+    const dir = Math.random()*Math.PI*2;
+    points.push({
+      x, y,
+      vx: Math.cos(dir)*speed,
+      vy: Math.sin(dir)*speed,
+      r: pr
+    });
+  }
+
+  targetIndex = (forcedTarget!==null && forcedTarget!==undefined) ? forcedTarget : Math.floor(Math.random()*n);
+  gamePhase = 'reveal';
+  phaseTimer = 0.7;
+  statusLine.textContent = 'Regarde bien…';
+  statusLine.className = 'status-line watch';
+  stopBtn.classList.remove('visible','pulsing');
+  mpHasAnswered = false;
+  playSfxReveal();
+
+  currentBootParams = {count, speedPx, timeSec};
+
+  stopLoop();
+  lastTs = performance.now();
+  rafId = requestAnimationFrame(loop);
+}
+let currentBootParams = null;
+
+function pointRadiusFor(n){
+  if(n<=8) return 26;
+  if(n<=12) return 23;
+  if(n<=16) return 20;
+  if(n<=20) return 18;
+  if(n<=24) return 16;
+  return 14;
+}
+
+/* ---------- SECTION: MAIN LOOP ---------- */
+function loop(ts){
+  const dt = Math.min((ts-lastTs)/1000, 0.05);
+  lastTs = ts;
+
+  if(gamePhase==='reveal'){
+    phaseTimer -= dt;
+    if(phaseTimer<=0){
+      gamePhase='moving';
+      phaseTimer = currentBootParams.timeSec;
+    }
+  } else if(gamePhase==='moving'){
+    phaseTimer -= dt;
+    updatePhysics(dt);
+    if(phaseTimer<=0){
+      gamePhase='waitingStop';
+      statusLine.textContent = 'Suis le point… appuie sur STOP quand tu es prêt';
+      statusLine.className = 'status-line';
+      stopBtn.classList.add('visible','pulsing');
+      playSfxFade();
+    }
+  } else if(gamePhase==='waitingStop'){
+    updatePhysics(dt);
+  }
+
+  draw();
+
+  if(gamePhase!=='stopped' && gamePhase!=='done'){
+    rafId = requestAnimationFrame(loop);
+  }
+}
+
+function stopLoop(){
+  if(rafId) cancelAnimationFrame(rafId);
+  rafId = null;
+}
+
+/* ---------- SECTION: PHYSICS ---------- */
+function updatePhysics(dt){
+  for(const p of points){
+    p.x += p.vx*dt;
+    p.y += p.vy*dt;
+
+    const dx = p.x-CENTER, dy = p.y-CENTER;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const maxDist = BOUNDARY_R - p.r;
+    if(dist > maxDist){
+      const nx = dx/dist, ny = dy/dist;
+      p.x = CENTER + nx*maxDist;
+      p.y = CENTER + ny*maxDist;
+      const dot = p.vx*nx + p.vy*ny;
+      p.vx -= 2*dot*nx;
+      p.vy -= 2*dot*ny;
+    }
+  }
+
+  for(let i=0;i<points.length;i++){
+    for(let j=i+1;j<points.length;j++){
+      const a=points[i], b=points[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const minDist=a.r+b.r;
+      if(dist>0 && dist<minDist){
+        const nx=dx/dist, ny=dy/dist;
+        const overlap=(minDist-dist)/2;
+        a.x-=nx*overlap; a.y-=ny*overlap;
+        b.x+=nx*overlap; b.y+=ny*overlap;
+        const relVx=b.vx-a.vx, relVy=b.vy-a.vy;
+        const rel=relVx*nx+relVy*ny;
+        if(rel<0){
+          a.vx+=rel*nx; a.vy+=rel*ny;
+          b.vx-=rel*nx; b.vy-=rel*ny;
+        }
+      }
+    }
+  }
+}
+
+/* ---------- SECTION: DRAW ---------- */
+function draw(){
+  ctx.clearRect(0,0,STAGE_SIZE,STAGE_SIZE);
+
+  ctx.beginPath();
+  ctx.arc(CENTER,CENTER,BOUNDARY_R+6,0,Math.PI*2);
+  ctx.strokeStyle = '#2a2d35';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  points.forEach((p,i)=>{
+    const isYellow = (i===targetIndex) && (gamePhase==='reveal' || gamePhase==='done');
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle = isYellow ? '#ffcc33' : '#eef0f2';
+    ctx.fill();
+    if(isYellow){
+      ctx.shadowColor='#ffcc33';
+      ctx.shadowBlur=18;
+      ctx.fill();
+      ctx.shadowBlur=0;
+    }
+  });
+}
+
+/* ---------- SECTION: STOP / CLICK ---------- */
+function onStop(){
+  if(gamePhase!=='waitingStop') return;
+  gamePhase='stopped';
+  stopLoop();
+  stopBtn.classList.remove('visible','pulsing');
+  playSfxStop();
+  vibrate(30);
+  statusLine.textContent = 'Clique sur le bon point';
+  statusLine.className = 'status-line go';
+  draw();
+  canvas.addEventListener('pointerdown', onCanvasClick, {once:true});
+}
+
+function onCanvasClick(e){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = STAGE_SIZE/rect.width, scaleY = STAGE_SIZE/rect.height;
+  const x = (e.clientX-rect.left)*scaleX;
+  const y = (e.clientY-rect.top)*scaleY;
+
+  let clickedIndex = -1;
+  let bestDist = Infinity;
+  points.forEach((p,i)=>{
+    const d = Math.hypot(p.x-x,p.y-y);
+    if(d<=p.r+6 && d<bestDist){ bestDist=d; clickedIndex=i; }
+  });
+
+  finishRound(clickedIndex);
+}
+
+/* ---------- SECTION: RESULT ---------- */
+function finishRound(clickedIndex){
+  gamePhase='done';
+  const won = clickedIndex===targetIndex;
+
+  if(activeMode==='mp'){
+    if(won){ playSfxWin(); vibrate([20,40,20]); }
+    else { playSfxLose(); vibrate(120); }
+    draw();
+    mpReportResult(won, clickedIndex);
+    return;
+  }
+
+  stats.played++;
+  stats.attempts++;
+  if(won){ stats.wins++; stats.correct++; stats.currentStreak++; stats.bestStreak=Math.max(stats.bestStreak,stats.currentStreak); }
+  else { stats.currentStreak=0; }
+
+  if(won){ playSfxWin(); vibrate([20,40,20]); }
+  else { playSfxLose(); vibrate(120); }
+
+  draw();
+
+  setTimeout(()=>{
+    document.getElementById('resultWord').textContent = won ? 'VICTOIRE' : 'DÉFAITE';
+    document.getElementById('resultWord').className = 'result-word ' + (won?'win':'lose');
+    document.getElementById('resultSub').textContent = won
+      ? 'Bien vu — le point a été correctement repéré.'
+      : (clickedIndex===-1 ? "Aucun point n'a été touché." : "Ce n'était pas le bon point.");
+
+    document.getElementById('statPlayed').textContent = stats.played;
+    document.getElementById('statWins').textContent = stats.wins;
+    document.getElementById('statAcc').textContent = Math.round(100*stats.correct/stats.attempts)+'%';
+    document.getElementById('statBest').textContent = stats.bestStreak;
+
+    roundNum++;
+    goTo('resultScreen');
+  }, 550);
+}
+
+function updateAccuracyHud(){
+  const acc = stats.attempts>0 ? Math.round(100*stats.correct/stats.attempts) : null;
+  document.getElementById('hudAccuracy').textContent = acc===null ? '–' : acc+'%';
+}
+
+/* =========================================================
+   SECTION: MULTIJOUEUR (Firebase Realtime Database)
+   ========================================================= */
+
+let fbApp = null, db = null;
+let myId = null, myName = '';
+let roomCode = null, isHost = false;
+let roomRef = null, roomListener = null;
+let lastHandledRound = 0;
+let evaluating = false;
+let mpRoomCache = null;
+let mpTimeoutHandle = null;
+
+function initFirebase(){
+  if(fbApp) return true;
+  try{
+    if(!window.FOCUS_FIREBASE_CONFIG || window.FOCUS_FIREBASE_CONFIG.apiKey==='REMPLACE_MOI'){
+      alert("Le multijoueur nécessite un projet Firebase.\nOuvre firebase-config.js et suis les instructions du README pour renseigner tes clés.");
+      return false;
+    }
+    fbApp = firebase.initializeApp(window.FOCUS_FIREBASE_CONFIG);
+    db = firebase.database();
+    return true;
+  }catch(e){
+    console.error(e);
+    alert("Impossible de se connecter au multijoueur : " + e.message);
+    return false;
+  }
+}
+
+function getOrCreatePlayerId(){
+  let id = localStorage.getItem('focusPlayerId');
+  if(!id){
+    id = 'p_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+    localStorage.setItem('focusPlayerId', id);
+  }
+  return id;
+}
+myId = getOrCreatePlayerId();
+
+function genRoomCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s='';
+  for(let i=0;i<5;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+
+function openJoinScreen(){
+  const hash = location.hash.match(/join=([A-Z0-9]+)/i);
+  if(hash) document.getElementById('mpJoinCode').value = hash[1].toUpperCase();
+  document.getElementById('mpJoinError').style.display = 'none';
+  goTo('mpJoinScreen');
+}
+
+// Auto-prefill si on arrive via un lien d'invitation
+window.addEventListener('DOMContentLoaded', ()=>{
+  const hash = location.hash.match(/join=([A-Z0-9]+)/i);
+  if(hash){
+    goTo('mpMenuScreen');
+    setTimeout(()=>openJoinScreen(), 50);
+  }
+});
+
+function mpCreateRoom(){
+  if(!initFirebase()) return;
+  myName = (document.getElementById('mpCreateName').value || 'Joueur').trim().slice(0,16) || 'Joueur';
+  roomCode = genRoomCode();
+  isHost = true;
+  lastHandledRound = 0;
+
+  roomRef = db.ref('rooms/'+roomCode);
+  roomRef.set({
+    host: myId,
+    status: 'lobby',
+    createdAt: Date.now(),
+    config: { count: mpConfig.count, speedIdx: mpConfig.speedIdx, timeSec: mpConfig.timeSec },
+    round: 0,
+    players: { [myId]: { name: myName, alive:true, joinedAt: Date.now() } }
+  }).then(()=>{
+    attachRoomListener();
+    goTo('mpLobbyScreen');
+  }).catch(e=>alert("Erreur de création : "+e.message));
+}
+
+function mpJoinRoom(){
+  if(!initFirebase()) return;
+  myName = (document.getElementById('mpJoinName').value || 'Joueur').trim().slice(0,16) || 'Joueur';
+  const code = (document.getElementById('mpJoinCode').value || '').trim().toUpperCase();
+  const errEl = document.getElementById('mpJoinError');
+  if(!code){ errEl.textContent='Entre un code de partie.'; errEl.style.display='block'; return; }
+
+  db.ref('rooms/'+code).once('value').then(snap=>{
+    const room = snap.val();
+    if(!room){ errEl.textContent='Aucune partie avec ce code.'; errEl.style.display='block'; return; }
+    if(room.status!=='lobby'){ errEl.textContent='Cette partie a déjà commencé.'; errEl.style.display='block'; return; }
+    roomCode = code;
+    isHost = false;
+    lastHandledRound = 0;
+    roomRef = db.ref('rooms/'+roomCode);
+    roomRef.child('players/'+myId).set({ name: myName, alive:true, joinedAt: Date.now() }).then(()=>{
+      attachRoomListener();
+      goTo('mpLobbyScreen');
+    });
+  }).catch(e=>{ errEl.textContent='Erreur : '+e.message; errEl.style.display='block'; });
+}
+
+function mpCopyLink(){
+  const url = location.origin + location.pathname + '#join=' + roomCode;
+  navigator.clipboard?.writeText(url).then(()=>{
+    playTone(700,0.05,'sine',0.1);
+  }).catch(()=>{ prompt('Copie ce lien :', url); });
+}
+function mpCopyCode(){
+  navigator.clipboard?.writeText(roomCode).catch(()=>{ prompt('Code de la partie :', roomCode); });
+}
+
+function attachRoomListener(){
+  if(roomListener) roomRef.off('value', roomListener);
+  document.getElementById('mpRoomCodeDisplay').textContent = roomCode;
+  roomListener = roomRef.on('value', snap=>{
+    const room = snap.val();
+    if(!room){
+      alert('La partie a été fermée.');
+      mpCleanupLocal();
+      goTo('menuScreen');
+      return;
+    }
+    mpRoomCache = room;
+
+    if(room.status==='lobby'){
+      renderLobby(room);
+    } else if(room.status==='playing'){
+      handleMpRoundUpdate(room);
+      if(isHost) maybeEvaluateRound(room);
+    } else if(room.status==='finished'){
+      showMpFinalScreen(room);
+    }
+  });
+}
+
+function renderLobby(room){
+  if(!document.getElementById('mpLobbyScreen').classList.contains('active')){
+    goTo('mpLobbyScreen');
+  }
+  const listEl = document.getElementById('mpPlayerList');
+  listEl.innerHTML = '';
+  const entries = Object.entries(room.players||{});
+  entries.forEach(([id,p])=>{
+    const row = document.createElement('div');
+    row.className = 'player-row' + (id===myId ? ' me':'');
+    row.innerHTML = `<span>${escapeHtml(p.name)}</span><span class="tag">${id===room.host?'Hôte':(id===myId?'Toi':'')}</span>`;
+    listEl.appendChild(row);
+  });
+  const startBtn = document.getElementById('mpStartBtn');
+  const waitMsg = document.getElementById('mpWaitHostMsg');
+  if(isHost){
+    startBtn.style.display='inline-block';
+    startBtn.disabled = entries.length < 2;
+    waitMsg.style.display='none';
+  } else {
+    startBtn.style.display='none';
+    waitMsg.style.display='block';
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function mpStartGame(){
+  if(!isHost || !mpRoomCache) return;
+  const entries = Object.entries(mpRoomCache.players||{});
+  if(entries.length<2){ alert('Il faut au moins 2 joueurs pour démarrer.'); return; }
+  const n = mpConfig.count;
+  const targetIndex = Math.floor(Math.random()*n);
+  roomRef.update({
+    status:'playing',
+    round:1,
+    currentRound: {
+      n, speedPx: SPEED_OPTIONS[mpConfig.speedIdx].px, timeSec: mpConfig.timeSec,
+      targetIndex, startAt: Date.now()+1500
+    }
+  });
+}
+
+function handleMpRoundUpdate(room){
+  const me = room.players ? room.players[myId] : null;
+  if(!me) return;
+
+  if(me.alive===false){
+    if(!document.getElementById('mpEliminatedScreen').classList.contains('active')){
+      showMpEliminated(room, me);
+    }
+    return;
+  }
+
+  if(room.round !== lastHandledRound && room.currentRound){
+    lastHandledRound = room.round;
+    startMpRoundLocally(room);
+  }
+}
+
+function startMpRoundLocally(room){
+  activeMode = 'mp';
+  document.getElementById('soloHud').style.display='none';
+  document.getElementById('mpHud').classList.add('active');
+  goTo('gameScreen');
+
+  const rc = room.currentRound;
+  const aliveCount = Object.values(room.players||{}).filter(p=>p.alive!==false).length;
+  document.getElementById('mpHudRound').textContent = room.round;
+  document.getElementById('mpHudAlive').textContent = aliveCount;
+  document.getElementById('mpHudCount').textContent = rc.n;
+
+  mpBanner.textContent = `Manche ${room.round} — ${aliveCount} joueur${aliveCount>1?'s':''} restant${aliveCount>1?'s':''}`;
+  mpBanner.classList.add('show');
+  setTimeout(()=>mpBanner.classList.remove('show'), 2400);
+
+  const delay = Math.max(0, (rc.startAt||Date.now()) - Date.now());
+  statusLine.textContent = 'La manche va commencer…';
+  statusLine.className = 'status-line watch';
+  setTimeout(()=>{
+    bootRound({ count: rc.n, speedPx: rc.speedPx, timeSec: rc.timeSec, forcedTarget: rc.targetIndex });
+  }, delay);
+
+  if(isHost){
+    if(mpTimeoutHandle) clearTimeout(mpTimeoutHandle);
+    mpTimeoutHandle = setTimeout(()=>{
+      if(mpRoomCache) maybeEvaluateRound(mpRoomCache, true);
+    }, delay + MP_ROUND_TIMEOUT_MS);
+  }
+}
+
+function mpReportResult(won, clickedIndex){
+  if(mpHasAnswered) return;
+  mpHasAnswered = true;
+  statusLine.textContent = won ? 'Bonne réponse — en attente des autres joueurs…' : 'Mauvaise réponse — en attente des autres joueurs…';
+  statusLine.className = 'status-line ' + (won?'go':'bad');
+  roomRef.child(`roundResults/${lastHandledRound}/${myId}`).set({
+    correct: won, tappedIndex: clickedIndex, ts: Date.now()
+  });
+}
+
+function maybeEvaluateRound(room, force){
+  if(!isHost || evaluating) return;
+  if(room.status!=='playing') return;
+  const alive = Object.entries(room.players||{}).filter(([id,p])=>p.alive!==false);
+  const results = (room.roundResults && room.roundResults[room.round]) || {};
+  const answered = alive.filter(([id])=>results[id]).length;
+  const startAt = room.currentRound ? room.currentRound.startAt : 0;
+  const timeUp = force || (Date.now() - startAt > MP_ROUND_TIMEOUT_MS + 3000);
+  if(answered>=alive.length || timeUp){
+    evaluating = true;
+    evaluateRound(room, results, alive).finally(()=>{ evaluating=false; });
+  }
+}
+
+function evaluateRound(room, results, alive){
+  const updates = {};
+  let stillAlive = [];
+  alive.forEach(([id])=>{
+    const r = results[id];
+    const correct = r ? !!r.correct : false;
+    if(!correct){
+      updates[`players/${id}/alive`] = false;
+      updates[`players/${id}/eliminatedAtRound`] = room.round;
+    } else {
+      stillAlive.push(id);
+    }
+  });
+
+  if(stillAlive.length<=1){
+    updates['status']='finished';
+    updates['winner']= stillAlive.length===1 ? stillAlive[0] : null;
+    updates['finishedAt']= Date.now();
+  } else {
+    const nextRound = room.round+1;
+    const n = Math.min(room.config.count + (nextRound-1)*COUNT_STEP_PER_ROUND, MAX_COUNT);
+    const speedIdx = Math.min(room.config.speedIdx + Math.floor((nextRound-1)/SPEED_STEP_EVERY_ROUNDS), SPEED_OPTIONS.length-1);
+    const targetIndex = Math.floor(Math.random()*n);
+    updates['round']=nextRound;
+    updates['currentRound']={ n, speedPx: SPEED_OPTIONS[speedIdx].px, timeSec: room.config.timeSec, targetIndex, startAt: Date.now()+1800 };
+  }
+  return roomRef.update(updates);
+}
+
+function showMpEliminated(room, me){
+  goTo('mpEliminatedScreen');
+  const aliveCount = Object.values(room.players||{}).filter(p=>p.alive!==false).length;
+  document.getElementById('mpEliminatedMsg').textContent =
+    `Tu as été éliminé à la manche ${me.eliminatedAtRound||room.round}.`;
+  document.getElementById('mpEliminatedLive').textContent =
+    aliveCount>0 ? `${aliveCount} joueur${aliveCount>1?'s':''} encore en jeu…` : 'La partie se termine…';
+}
+
+function showMpFinalScreen(room){
+  goTo('mpFinalScreen');
+  const players = Object.entries(room.players||{});
+  const iAmWinner = room.winner===myId;
+  document.getElementById('mpFinalWord').textContent = room.winner ? (iAmWinner ? 'VICTOIRE' : 'PARTIE TERMINÉE') : 'ÉGALITÉ';
+  document.getElementById('mpFinalWord').className = 'result-word ' + (room.winner ? (iAmWinner?'win':'') : '');
+  document.getElementById('mpFinalSub').textContent = room.winner
+    ? `${escapeHtml(room.players[room.winner]?.name||'?')} remporte la partie 🏆`
+    : "Aucun survivant sur cette manche — pas de vainqueur.";
+
+  const ranked = players.slice().sort((a,b)=>{
+    const aWin = a[0]===room.winner, bWin = b[0]===room.winner;
+    if(aWin) return -1;
+    if(bWin) return 1;
+    const ar = a[1].eliminatedAtRound ?? -1;
+    const br = b[1].eliminatedAtRound ?? -1;
+    return br-ar;
+  });
+
+  const listEl = document.getElementById('mpFinalRanking');
+  listEl.innerHTML = '';
+  ranked.forEach(([id,p], i)=>{
+    const row = document.createElement('div');
+    row.className = 'player-row' + (id===myId?' me':'') + (id!==room.winner?' eliminated':'');
+    const place = i+1;
+    row.innerHTML = `<span><span class="rank">#${place}</span>${escapeHtml(p.name)}</span><span class="tag">${id===room.winner?'🏆 Vainqueur':(p.eliminatedAtRound?('Manche '+p.eliminatedAtRound):'')}</span>`;
+    listEl.appendChild(row);
+  });
+
+  document.getElementById('mpReplayBtn').style.display = isHost ? 'inline-block' : 'none';
+}
+
+function mpReplaySameRoom(){
+  if(!isHost || !mpRoomCache) return;
+  const resetPlayers = {};
+  Object.entries(mpRoomCache.players||{}).forEach(([id,p])=>{
+    resetPlayers[id] = { name:p.name, alive:true, joinedAt:p.joinedAt||Date.now() };
+  });
+  lastHandledRound = 0;
+  roomRef.update({
+    status:'lobby', round:0, players: resetPlayers, roundResults:null, winner:null, currentRound:null
+  });
+}
+
+function mpLeaveRoom(){
+  stopLoop();
+  if(roomRef && myId){
+    roomRef.child('players/'+myId).remove().catch(()=>{});
+  }
+  mpCleanupLocal();
+  goTo('menuScreen');
+}
+
+function mpCleanupLocal(){
+  if(roomListener && roomRef) roomRef.off('value', roomListener);
+  if(mpTimeoutHandle) clearTimeout(mpTimeoutHandle);
+  roomListener = null; roomRef = null; roomCode = null; isHost = false;
+  lastHandledRound = 0; mpRoomCache = null; evaluating = false;
+  activeMode = 'solo';
+  document.getElementById('mpHud').classList.remove('active');
+  document.getElementById('soloHud').style.display='flex';
+}
+</script>
+</body>
+</html>
