@@ -21,12 +21,11 @@
    ========================================================= */
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCZwPWMmN1I5hdVYQEkj_PtUCaHYJTdptQ",
-  authDomain: "yellowdotchampiona.firebaseapp.com",
-  databaseURL: "https://yellowdotchampiona-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "yellowdotchampiona",
-  storageBucket: "yellowdotchampiona.firebasestorage.app",
-  messagingSenderId: "149651594411",
-  appId: "1:149651594411:web:09a21c1484ac3cb767ebee",
-  measurementId: "G-CM4BWNR1SY"
+  apiKey: "AIzaSyBG6oid29bMq8GVvBkNvPtSDZTRO5K09uk",
+  authDomain: "focus-game-1c7ee.firebaseapp.com",
+  databaseURL: "https://focus-game-1c7ee-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "focus-game-1c7ee",
+  storageBucket: "focus-game-1c7ee.firebasestorage.app",
+  messagingSenderId: "856695121197",
+  appId: "1:856695121197:web:cfc0d876ba9d1885499fa4"
 };
